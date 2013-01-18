@@ -3,6 +3,8 @@ arcgis-mapcodebuilder-js
 
 A sample application that allows you to navigate a map and copy/paste code segments to initialize ArcGIS maps to a matching view.
 
+See a [live version here](http://geeknixta.com/arcgis/extfinder/).
+
 ## Features
 * Set the DPI, width and height to match the target device.
 * Pan and zoom your map to the desired starting extent.
