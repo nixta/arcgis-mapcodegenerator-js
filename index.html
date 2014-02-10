@@ -8,315 +8,310 @@
 	<meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no" />
 	<title>ArcGIS Map Code Generator</title>
 	<link rel="stylesheet" type="text/css" href="http://serverapi.arcgisonline.com/jsapi/arcgis/3.2/js/dojo/dijit/themes/claro/claro.css">
-	<link rel="stylesheet" type="text/css" href="http://serverapi.arcgisonline.com/jsapi/arcgis/3.2/js/esri/css/esri.css" />
-	<script type="text/javascript" src="/sh/scripts/shCore.js">
-	</script>
-	<link type="text/css" rel="stylesheet" href="/sh/styles/shCoreDefault.css" />
-	<script type="text/javascript" src="/sh/scripts/shBrushJScript.js">
-	</script>
-	<script type="text/javascript" src="/sh/scripts/shBrushObjC.js">
-	</script>
+	<link rel="stylesheet" href="http://js.arcgis.com/3.8/js/esri/css/esri.css">
+
+  <script type="text/javascript" src="sh/scripts/shCore.js"></script>
+	<link type="text/css" rel="stylesheet" href="sh/styles/shCoreDefault.css" />
+	<script type="text/javascript" src="sh/scripts/shBrushJScript.js"></script>
+	<script type="text/javascript" src="sh/scripts/shBrushObjC.js"></script>
+
 	<style>
-      html, body { height: 100%; width: 100%; margin: 0; padding: 0; }
-      .esriScalebar{
-        padding: 20px 20px;
-      }
-      #map{
-        padding:0;
-      }
-    </style>
+    html, body { height: 100%; width: 100%; margin: 0; padding: 0; }
+    .esriScalebar{
+      padding: 20px 20px;
+    }
+    #map{
+      padding:0;
+    }
+   </style>
 	<script type="text/javascript">
-var djConfig = {parseOnLoad: true};
+		var djConfig = {parseOnLoad: true};
 	</script>
-	<script type="text/javascript" src="http://serverapi.arcgisonline.com/jsapi/arcgis/?v=3.2">
-	</script>
+  <script src="http://js.arcgis.com/3.8/"></script>
+
 	<script type="text/javascript">
+    dojo.require("dijit.layout.BorderContainer");
+    dojo.require("dijit.layout.ContentPane");
+    dojo.require("esri.map");
 
-      dojo.require("dijit.layout.BorderContainer");
-      dojo.require("dijit.layout.ContentPane");
-      dojo.require("esri.map");
+    var map;
 
-      var map;
-
-      var jsDpi = 96;
-      var deviceDpi = 163;
-      var devicePixelWidth = 320;
-      var devicePixelHeight = 460;
+    var jsDpi = 96;
+    var deviceDpi = 163;
+    var devicePixelWidth = 320;
+    var devicePixelHeight = 460;
+    
+    var initialConfig = 0;
+    
+    var configs = [
+			{
+				name: "JavaScript",
+				dpi: 96,
+				width: 320,
+				height: 460,
+				code: "JavaScript",
+				editable: true,
+				newgroup: "JavaScript"
+			},
+	  	{ 
+	  		name: "iPhone 3G/3GS",
+	  		dpi: 163,
+	  		width: 320,
+	  		height: 460,
+	  		code: "iOS",
+	  		newgroup: "iOS"
+	  	},
+	  	{
+	  		name: "iPhone 4/4S",
+	  		dpi: 163,
+	  		width: 640,
+	  		height: 920,
+	  		code: "iOS"
+			},
+			{
+				name: "iPhone 5",
+				dpi: 163,
+				width: 640,
+				height: 1096,
+	      		code: "iOS"
+			},
+			{
+				name: "Custom",
+				dpi: 96,
+				width: 400,
+				height: 400,
+				editable: true,
+	      		code: "English",
+	      		newgroup: "Other"
+			}
+    ];
       
-      var initialConfig = 0;
-      
-      var configs = [
-		{
-			name: "JavaScript",
-			dpi: 96,
-			width: 320,
-			height: 460,
-			code: "JavaScript",
-			editable: true,
-			newgroup: "JavaScript"
-		},
-      	{ 
-      		name: "iPhone 3G/3GS",
-      		dpi: 163,
-      		width: 320,
-      		height: 460,
-      		code: "iOS",
-      		newgroup: "iOS"
-      	},
-      	{
-      		name: "iPhone 4/4S",
-      		dpi: 163,
-      		width: 640,
-      		height: 920,
-      		code: "iOS"
-		},
-		{
-			name: "iPhone 5",
-			dpi: 163,
-			width: 640,
-			height: 1096,
-      		code: "iOS"
-		},
-		{
-			name: "Custom",
-			dpi: 96,
-			width: 400,
-			height: 400,
-			editable: true,
-      		code: "English",
-      		newgroup: "Other"
-		}
-      ];
-      
-      var codeSnippets = {
-       "JavaScript": {
-       			name: "Zoom to extent",
-       			template: "var initExtent = new esri.geometry.Extent(\\{\"xmin\":{e.xmin},\"ymin\":{e.ymin},\n" +
-       			          "                                           \"xmax\":{e.xmax},\"ymax\":{e.ymax},\n" +
-       			          "                                           \"spatialReference\":\\{\"wkid\":{e.spatialReference.wkid}\\}\\});\n" +
-        				  "map = new esri.Map(\"map\",\\{extent:initExtent\\});",
-        		highlighter: "javascript"
-        		},
-       "iOS": [{ 
-       			name: "Zoom to Scale and Point",
-                template: "[self.mapView zoomToScale:{scale}\n" + 
-                          "          withCenterPoint:[AGSPoint pointWithX:{pt.x}\n" +
-                          "                                             y:{pt.y}\n" +
-                          "                              spatialReference:[AGSSpatialReference spatialReferenceWithWKID:{pt.spatialReference.wkid}]]\n" +
-                          "                 animated:YES];",
-       			highlighter: "objc"
-       		   },
-       		   {
-       		    name: "Zoom to extent",
-       		    template: "[self.mapView zoomToEnvelope:[AGSEnvelope envelopeWithXmin:{e.xmin}\n"+
-       		    		  "                                                      ymin:{e.ymin}\n"+
-       		    		  "                                                      xmax:{e.xmax}\n"+
-       		    		  "                                                      ymax:{e.ymax}\n"+
-       		    		  "                                          spatialReference:[AGSSpatialReference spatialReferenceWithWKID:{e.spatialReference.wkid}]]\n"+
-       		    		  "                    animated:YES];",
-				highlighter: "objc"
-       		   }],
-       "English": { 
-       				name: "Zoom to Scale and Point",
-       				template: "Zoom To Scale {scale} around {pt.x},{pt.y} using spatial reference {pt.spatialReference.wkid}"
-       			  }
-      };
+    var codeSnippets = {
+     "JavaScript": {
+     			name: "Zoom to extent",
+     			template: "var initExtent = new esri.geometry.Extent(\\{\"xmin\":{e.xmin},\"ymin\":{e.ymin},\n" +
+     			          "                                           \"xmax\":{e.xmax},\"ymax\":{e.ymax},\n" +
+     			          "                                           \"spatialReference\":\\{\"wkid\":{e.spatialReference.wkid}\\}\\});\n" +
+      				  "map = new esri.Map(\"map\",\\{extent:initExtent\\});",
+      		highlighter: "javascript"
+      		},
+     "iOS": [{ 
+     			name: "Zoom to Scale and Point",
+              template: "[self.mapView zoomToScale:{scale}\n" + 
+                        "          withCenterPoint:[AGSPoint pointWithX:{pt.x}\n" +
+                        "                                             y:{pt.y}\n" +
+                        "                              spatialReference:[AGSSpatialReference spatialReferenceWithWKID:{pt.spatialReference.wkid}]]\n" +
+                        "                 animated:YES];",
+     			highlighter: "objc"
+     		   },
+     		   {
+     		    name: "Zoom to extent",
+     		    template: "[self.mapView zoomToEnvelope:[AGSEnvelope envelopeWithXmin:{e.xmin}\n"+
+     		    		  "                                                      ymin:{e.ymin}\n"+
+     		    		  "                                                      xmax:{e.xmax}\n"+
+     		    		  "                                                      ymax:{e.ymax}\n"+
+     		    		  "                                          spatialReference:[AGSSpatialReference spatialReferenceWithWKID:{e.spatialReference.wkid}]]\n"+
+     		    		  "                    animated:YES];",
+			highlighter: "objc"
+     		   }],
+     "English": { 
+     				name: "Zoom to Scale and Point",
+     				template: "Zoom To Scale {scale} around {pt.x},{pt.y} using spatial reference {pt.spatialReference.wkid}"
+     			  }
+    };
 
-      var currentConfig;
+    var currentConfig;
 
-	var setDevice = function() 
-	{
-		var mapDiv = dojo.style("map", {
-			width:currentConfig.width + "px",
-			height:currentConfig.height + "px"
-		});
+		var setDevice = function() 
+		{
+			var mapDiv = dojo.style("map", {
+				width:currentConfig.width + "px",
+				height:currentConfig.height + "px"
+			});
 		
-		var templateConfig = codeSnippets[currentConfig.code];
-		dojo.destroy("codeTemplates");
+			var templateConfig = codeSnippets[currentConfig.code];
+			dojo.destroy("codeTemplates");
 
-		if( Object.prototype.toString.call( templateConfig ) === "[object Array]" ) 
+			if( Object.prototype.toString.call( templateConfig ) === "[object Array]" ) 
+			{
+				// Build a pick list.
+				require(["dojo/dom-construct"], function(domConstruct) {
+					var arrayOfConfigs = templateConfig;
+					var codeTemplates = domConstruct.toDom("<select id='codeTemplates'></select>");
+					for (i=0;i<arrayOfConfigs.length;i++)
+					{
+						var c = arrayOfConfigs[i];
+						var optionNode = domConstruct.toDom(dojo.replace("<option name='codeTemplate-{code}-{id}'>{name}</option>",
+															{code:currentConfig.code, id:i, name:c.name}));
+						domConstruct.place(optionNode, codeTemplates, "last");
+					}
+					
+					dojo.connect(codeTemplates, 'onchange', function()
+					{
+						currentConfig.selectedTemplate = this.selectedIndex;
+						updateTemplate();
+					});
+					
+					domConstruct.place(codeTemplates, 'output', 'first');
+				});
+			}
+		
+			dojo.byId("manualDPI").value = currentConfig.dpi;
+			dojo.byId("manualWidth").value = currentConfig.width;
+			dojo.byId("manualHeight").value = currentConfig.height;
+			
+			dojo.query("input", dojo.byId("manualEntry")).attr("readonly",!currentConfig.editable);
+
+			dijit.byId("topContainer").resize();
+			if (map)
+			{
+				map.resize();
+			}
+		};
+	
+		var updateTemplate = function()
 		{
-			// Build a pick list.
-			require(["dojo/dom-construct"], function(domConstruct) {
-				var arrayOfConfigs = templateConfig;
-				var codeTemplates = domConstruct.toDom("<select id='codeTemplates'></select>");
-				for (i=0;i<arrayOfConfigs.length;i++)
+			var templateConfig = codeSnippets[currentConfig.code];
+			
+			// If we're dealing with an array of configs, get the right one (defaulting to 1st).
+			if( Object.prototype.toString.call( templateConfig ) === "[object Array]" ) 
+			{
+				// Do we have a selected template?
+				if (!currentConfig.selectedTemplate)
 				{
-					var c = arrayOfConfigs[i];
-					var optionNode = domConstruct.toDom(dojo.replace("<option name='codeTemplate-{code}-{id}'>{name}</option>",
-														{code:currentConfig.code, id:i, name:c.name}));
-					domConstruct.place(optionNode, codeTemplates, "last");
+					currentConfig.selectedTemplate = 0;
 				}
 				
-				dojo.connect(codeTemplates, 'onchange', function()
+				templateConfig = templateConfig[currentConfig.selectedTemplate];
+			}
+			
+			var template = templateConfig.template;
+			var templateHighlighter = templateConfig.highlighter;
+			
+			template = template.replace(/\\{/g,"&curly_left;").replace(/\\}/g,"&curly_right;");
+			var ext = map.extent;
+			var str = dojo.replace(template, 
+								   {
+									scale: map.getScale() * (currentConfig.dpi / jsDpi), 
+									pt:map.extent.getCenter(),
+									e:map.extent
+								   });
+			str = str.replace(/\&curly_left\;/g,"{").replace(/\&curly_right\;/g,"}");
+
+			var outputNode = dojo.byId("outputText");
+			var codeTemplate = templateHighlighter?"<pre id='highlightedCode' class='brush: {brush}'>{code}</pre>":"{code}";
+			var codeStr = dojo.replace(codeTemplate, {brush: templateHighlighter, code: str});
+			outputNode.innerHTML = codeStr;
+			var bc = dijit.byId("topContainer");
+			SyntaxHighlighter.highlight();
+			bc.resize();
+		}
+	
+    function init() {
+      currentConfig = configs[initialConfig];
+      
+      require(["dojo/dom-construct"], function(domConstruct) {
+				var configPicker = dojo.byId("devicePickList");
+				var openGroup = null;
+				for (i=0; i < configs.length; i++)
 				{
-					currentConfig.selectedTemplate = this.selectedIndex;
+					var c = configs[i], prefix="";
+					if (c.newgroup || c.endgroup)
+					{
+						if (openGroup != null)
+						{
+							domConstruct.place(openGroup, configPicker, "last");
+							openGroup = null;
+						}
+					}
+					
+					if (c.newgroup)
+					{
+						openGroup = domConstruct.toDom("<optgroup label='" + c.newgroup + "'/>");
+					}
+					
+					var newNode = domConstruct.toDom(dojo.replace("<option name='{id}'{s}>{name}</option>", {id:i, name:c.name, s:c==currentConfig?" selected":""}));
+					domConstruct.place(newNode, openGroup!=null?openGroup:configPicker, "last");
+				}
+				
+				if (openGroup != null)
+				{
+					domConstruct.place(openGroup, configPicker, "last");
+				}
+			
+				dojo.connect(configPicker, "onchange", function() {
+					currentConfig = configs[this.selectedIndex];
+					setDevice();
 					updateTemplate();
 				});
-				
-				domConstruct.place(codeTemplates, 'output', 'first');
-			});
-		}
-		
-		dojo.byId("manualDPI").value = currentConfig.dpi;
-		dojo.byId("manualWidth").value = currentConfig.width;
-		dojo.byId("manualHeight").value = currentConfig.height;
-		
-		dojo.query("input", dojo.byId("manualEntry")).attr("readonly",!currentConfig.editable);
+      });
 
-		dijit.byId("topContainer").resize();
-		if (map)
-		{
-			map.resize();
-		}
-	};
-	
-	var updateTemplate = function()
-	{
-		var templateConfig = codeSnippets[currentConfig.code];
-		
-		// If we're dealing with an array of configs, get the right one (defaulting to 1st).
-		if( Object.prototype.toString.call( templateConfig ) === "[object Array]" ) 
-		{
-			// Do we have a selected template?
-			if (!currentConfig.selectedTemplate)
-			{
-				currentConfig.selectedTemplate = 0;
-			}
-			
-			templateConfig = templateConfig[currentConfig.selectedTemplate];
-		}
-		
-		var template = templateConfig.template;
-		var templateHighlighter = templateConfig.highlighter;
-		
-		template = template.replace(/\\{/g,"&curly_left;").replace(/\\}/g,"&curly_right;");
-		var ext = map.extent;
-		var str = dojo.replace(template, 
-							   {
-								scale: map.getScale() * (currentConfig.dpi / jsDpi), 
-								pt:map.extent.getCenter(),
-								e:map.extent
-							   });
-		str = str.replace(/\&curly_left\;/g,"{").replace(/\&curly_right\;/g,"}");
-
-		var outputNode = dojo.byId("outputText");
-		var codeTemplate = templateHighlighter?"<pre id='highlightedCode' class='brush: {brush}'>{code}</pre>":"{code}";
-		var codeStr = dojo.replace(codeTemplate, {brush: templateHighlighter, code: str});
-		outputNode.innerHTML = codeStr;
-		var bc = dijit.byId("topContainer");
-		SyntaxHighlighter.highlight();
-		bc.resize();
-	}
-	
-      function init() {
-        currentConfig = configs[initialConfig];
-        
-        require(["dojo/dom-construct"], function(domConstruct) {
-			var configPicker = dojo.byId("devicePickList");
-			var openGroup = null;
-			for (i=0; i < configs.length; i++)
-			{
-				var c = configs[i], prefix="";
-				if (c.newgroup || c.endgroup)
-				{
-					if (openGroup != null)
-					{
-						domConstruct.place(openGroup, configPicker, "last");
-						openGroup = null;
-					}
-				}
-				
-				if (c.newgroup)
-				{
-					openGroup = domConstruct.toDom("<optgroup label='" + c.newgroup + "'/>");
-				}
-				
-				var newNode = domConstruct.toDom(dojo.replace("<option name='{id}'{s}>{name}</option>", {id:i, name:c.name, s:c==currentConfig?" selected":""}));
-				domConstruct.place(newNode, openGroup!=null?openGroup:configPicker, "last");
-			}
-			
-			if (openGroup != null)
-			{
-				domConstruct.place(openGroup, configPicker, "last");
-			}
-			
-			dojo.connect(configPicker, "onchange", function() 
-			{
-				currentConfig = configs[this.selectedIndex];
+      dojo.connect(dojo.byId("manualDPI"), "onchange", function() {
+				currentConfig.dpi = this.value;
 				setDevice();
 				updateTemplate();
-			});
-        });
-
-        dojo.connect(dojo.byId("manualDPI"), "onchange", function()
-        {
-			currentConfig.dpi = this.value;
-			setDevice();
-			updateTemplate();
-        });
+      });
         
-        dojo.connect(dojo.byId("manualWidth"), "onchange", function()
-        {
-			currentConfig.width = this.value;
-			setDevice();
-			updateTemplate();
-        });
+      dojo.connect(dojo.byId("manualWidth"), "onchange", function() {
+				currentConfig.width = this.value;
+				setDevice();
+				updateTemplate();
+      });
         
-        dojo.connect(dojo.byId("manualHeight"), "onchange", function()
-        {
-			currentConfig.height = this.value;
-			setDevice();
-			updateTemplate();
-        });
+      dojo.connect(dojo.byId("manualHeight"), "onchange", function() {
+				currentConfig.height = this.value;
+				setDevice();
+				updateTemplate();
+      });
         
   		SyntaxHighlighter.all();
 
-        setDevice();
+      setDevice();
 
-var initExtent = new esri.geometry.Extent({"xmin":-13647945.965576269,"ymin":4502154.477249376,
-                                           "xmax":-13599026.267473739,"ymax":4572476.543271764,
-                                           "spatialReference":{"wkid":102100}});
-                                                                                                                                 
-	  map = new esri.Map("map",{"extent":initExtent});        
-        //Add the topographic layer to the map. View the ArcGIS Online site for services http://arcgisonline/home/search.html?t=content&f=typekeywords:service    
-        var basemap = new esri.layers.ArcGISTiledMapServiceLayer("http://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer");
-        map.addLayer(basemap);
+			var initExtent = new esri.geometry.Extent({
+				"xmin":-13647945.965576269,"ymin":4502154.477249376,
+				"xmax":-13599026.267473739,"ymax":4572476.543271764,
+        "spatialReference":{"wkid":102100}
+      });
+
+		  map = new esri.Map("map",{"extent":initExtent});
+
+      //Add the topographic layer to the map. View the ArcGIS Online site for services http://arcgisonline/home/search.html?t=content&f=typekeywords:service    
+      var basemap = new esri.layers.ArcGISTiledMapServiceLayer("http://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer");
+      map.addLayer(basemap);
         
-        dojo.connect(map, "onExtentChange", function(extent, delta, levelChange, lod)
-        {
-        	updateTemplate();
-        });
-      }
+      dojo.connect(map, "onExtentChange", function(extent, delta, levelChange, lod) {
+      	updateTemplate();
+      });
+    }
 
-      dojo.addOnLoad(init);
-    
+    dojo.addOnLoad(init);    
 	</script>
 </head>
 <body class="claro">
-<div id="topContainer" dojotype="dijit.layout.BorderContainer" design="headline" gutters="false" style="width: 100%; height: 100%; margin: 0;">
-	<div id="deviceSelector" dojotype="dijit.layout.ContentPane" data-dojo-props="region:'top'" style="background-color: #AAA;">
-		Device: 
-		<select id="devicePickList" dojotype="dijit.form.Select">
-		</select>
-		<div id="manualEntry" style="display:inline">
-			<label> DPI:
-			<input id="manualDPI" type="text" dojotype="dijit.form.NumberTextBox" required="true" style="width: 5em" data-dojo-props="constraints:{min:10,places:0},invalidMessage:'DPI must be an integer >= 10'" />
-			</label> <label> Width:
-			<input id="manualWidth" type="text" dojotype="dijit.form.NumberTextBox" required="true" style="width: 5em" data-dojo-props="constraints:{min:10,places:0},invalidMessage:'Width must be an integer >= 10'" />
-			</label> <label> Height:
-			<input id="manualHeight" type="text" dojotype="dijit.form.NumberTextBox" required="true" style="width: 5em" data-dojo-props="constraints:{min:10,places:0},invalidMessage:'DPI must be an integer >= 10'" />
-			</label> 
+	<div id="topContainer" dojotype="dijit.layout.BorderContainer" design="headline" gutters="false" style="width: 100%; height: 100%; margin: 0;">
+		<div id="deviceSelector" dojotype="dijit.layout.ContentPane" data-dojo-props="region:'top'" style="background-color: #AAA;">
+			Device: 
+			<select id="devicePickList" dojotype="dijit.form.Select">
+			</select>
+			<div id="manualEntry" style="display:inline">
+				<label> DPI:
+				<input id="manualDPI" type="text" dojotype="dijit.form.NumberTextBox" required="true" style="width: 5em" data-dojo-props="constraints:{min:10,places:0},invalidMessage:'DPI must be an integer >= 10'" />
+				</label> <label> Width:
+				<input id="manualWidth" type="text" dojotype="dijit.form.NumberTextBox" required="true" style="width: 5em" data-dojo-props="constraints:{min:10,places:0},invalidMessage:'Width must be an integer >= 10'" />
+				</label> <label> Height:
+				<input id="manualHeight" type="text" dojotype="dijit.form.NumberTextBox" required="true" style="width: 5em" data-dojo-props="constraints:{min:10,places:0},invalidMessage:'DPI must be an integer >= 10'" />
+				</label> 
+			</div>
+		</div>
+		<div id="mapOuter" dojotype="dijit.layout.ContentPane" region="center" style="border:1px solid #000;padding:0;">
+			<div id="map" style="border:1px solid #000;padding:0;margin-right:auto;margin-left:auto;">
+			</div>
+		</div>
+		<div id="output" dojotype="dijit.layout.ContentPane" data-dojo-props="region:'bottom'">
+			<div id="outputText">
+			</div>
 		</div>
 	</div>
-	<div id="mapOuter" dojotype="dijit.layout.ContentPane" region="center" style="border:1px solid #000;padding:0;">
-		<div id="map" style="border:1px solid #000;padding:0;margin-right:auto;margin-left:auto;">
-		</div>
-	</div>
-	<div id="output" dojotype="dijit.layout.ContentPane" data-dojo-props="region:'bottom'">
-		<div id="outputText">
-		</div>
-	</div>
-</div>
 </body>
 </html>
