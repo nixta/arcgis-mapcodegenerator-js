@@ -3,7 +3,7 @@ arcgis-mapcodebuilder-js
 
 A sample application that allows you to navigate a map and copy/paste code segments to initialize ArcGIS maps to a matching view.
 
-See a [live version here](http://geeknixta.com/arcgis/extfinder/).
+See a [live version here](http://nixta.github.io/arcgis-mapcodegenerator-js/).
 
 ## Features
 * Set the DPI, width and height to match the target device.
@@ -13,11 +13,7 @@ See a [live version here](http://geeknixta.com/arcgis/extfinder/).
 
 Download Alex Gorbatchev's Syntax Highlighter. The index.html assumes it's available on your website at /sh
 
-[New to Github? Get started here.](http://htmlpreview.github.com/?https://github.com/Esri/esri.github.com/blob/master/help/esri-getting-to-know-github.html)
-
-## Requirements
-
-* Alex Gorbatchev's [Syntax Highlighter](http://alexgorbatchev.com/SyntaxHighlighter/) installed at /sh on your website.
+[New to Github? Get started here.](https://esri.github.io/help/esri-getting-to-know-github.html)
 
 ## Resources
 
