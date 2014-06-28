@@ -21,6 +21,18 @@
     }
     #map{
       padding:0;
+      -webkit-transition: -webkit-transform 0.1s ease-in-out;
+         -moz-transition:    -moz-transform 0.1s ease-in-out;
+          -ms-transition:     -ms-transform 0.1s ease-in-out;
+           -o-transition:      -o-transform 0.1s ease-in-out;
+              transition:         transform 0.1s ease-in-out;
+    }
+    #search {
+      display: block;
+      position: absolute;
+      z-index: 2;
+      top: 5px;
+      right: 10px;
     }
    </style>
 	<script type="text/javascript">
@@ -32,6 +44,8 @@
     dojo.require("dijit.layout.BorderContainer");
     dojo.require("dijit.layout.ContentPane");
     dojo.require("esri.map");
+    dojo.require("esri.dijit.Geocoder")
+    dojo.require("esri.geometry.webMercatorUtils");
 
     var map;
 
@@ -39,6 +53,11 @@
     var deviceDpi = 163;
     var devicePixelWidth = 320;
     var devicePixelHeight = 460;
+
+    var useLatLon = false;
+    var decimalPlaces = 4;
+
+    var currentScale = 1;
     
     var initialConfig = 0;
     
@@ -72,7 +91,7 @@
 				dpi: 163,
 				width: 640,
 				height: 1096,
-	      		code: "iOS"
+    		code: "iOS"
 			},
 			{
 				name: "Custom",
@@ -80,54 +99,91 @@
 				width: 400,
 				height: 400,
 				editable: true,
-	      		code: "English",
-	      		newgroup: "Other"
+    		code: "English",
+    		newgroup: "Other"
 			}
     ];
       
     var codeSnippets = {
-     "JavaScript": {
-     			name: "Zoom to extent",
-     			template: "var initExtent = new esri.geometry.Extent(\\{\"xmin\":{e.xmin},\"ymin\":{e.ymin},\n" +
-     			          "                                           \"xmax\":{e.xmax},\"ymax\":{e.ymax},\n" +
-     			          "                                           \"spatialReference\":\\{\"wkid\":{e.spatialReference.wkid}\\}\\});\n" +
-      				  "map = new esri.Map(\"map\",\\{extent:initExtent\\});",
-      		highlighter: "javascript"
-      		},
-     "iOS": [{ 
+      "JavaScript": {
+        name: "Zoom to extent",
+        template: "var initExtent = new esri.geometry.Extent(\\{\"xmin\":{e.xmin},\"ymin\":{e.ymin},\n" +
+                  "                                           \"xmax\":{e.xmax},\"ymax\":{e.ymax},\n" +
+                  "                                           \"spatialReference\":\\{\"wkid\":{e.spatialReference.wkid}\\}\\});\n" +
+        	  "map = new esri.Map(\"map\",\\{extent:initExtent\\});",
+        highlighter: "javascript"
+      },
+      "iOS": [{ 
      			name: "Zoom to Scale and Point",
-              template: "[self.mapView zoomToScale:{scale}\n" + 
-                        "          withCenterPoint:[AGSPoint pointWithX:{pt.x}\n" +
-                        "                                             y:{pt.y}\n" +
-                        "                              spatialReference:[AGSSpatialReference spatialReferenceWithWKID:{pt.spatialReference.wkid}]]\n" +
-                        "                 animated:YES];",
+          template: "[self.mapView zoomToScale:{scale}\n" + 
+                    "          withCenterPoint:[AGSPoint pointWithX:{pt.x}\n" +
+                    "                                             y:{pt.y}\n" +
+                    "                              spatialReference:[AGSSpatialReference spatialReferenceWithWKID:{pt.spatialReference.wkid}]]\n" +
+                    "                 animated:YES];",
      			highlighter: "objc"
-     		   },
-     		   {
-     		    name: "Zoom to extent",
-     		    template: "[self.mapView zoomToEnvelope:[AGSEnvelope envelopeWithXmin:{e.xmin}\n"+
-     		    		  "                                                      ymin:{e.ymin}\n"+
-     		    		  "                                                      xmax:{e.xmax}\n"+
-     		    		  "                                                      ymax:{e.ymax}\n"+
-     		    		  "                                          spatialReference:[AGSSpatialReference spatialReferenceWithWKID:{e.spatialReference.wkid}]]\n"+
-     		    		  "                    animated:YES];",
-			highlighter: "objc"
-     		   }],
-     "English": { 
-     				name: "Zoom to Scale and Point",
-     				template: "Zoom To Scale {scale} around {pt.x},{pt.y} using spatial reference {pt.spatialReference.wkid}"
-     			  }
+        },
+        {
+   		    name: "Zoom to extent",
+   		    template: "[self.mapView zoomToEnvelope:[AGSEnvelope envelopeWithXmin:{e.xmin}\n"+
+   		    		  "                                                      ymin:{e.ymin}\n"+
+   		    		  "                                                      xmax:{e.xmax}\n"+
+   		    		  "                                                      ymax:{e.ymax}\n"+
+   		    		  "                                          spatialReference:[AGSSpatialReference spatialReferenceWithWKID:{e.spatialReference.wkid}]]\n"+
+   		    		  "                    animated:YES];",
+    			highlighter: "objc"
+      }],
+      "English": { 
+        name: "Zoom to Scale and Point",
+        template: "Zoom To Scale {scale} around {pt.x},{pt.y} using spatial reference {pt.spatialReference.wkid}"
+      }
     };
 
     var currentConfig;
 
-		var setDevice = function() 
+    function mergeCrossBrowserCSS(originalCSS, name, value) {
+      var prefixes = ["webkit", "moz", "ms", "o", ""];
+      for (var i=0; i<prefixes.length; i++) {
+        var prefix = prefixes[i],
+            p = prefix!==""?"-"+prefix+"-":prefix;
+        originalCSS[p+name] = dojo.replace(value, {prefix:p});
+      }
+      return originalCSS;
+    }
+
+    function scaleMapView() {
+      var cs = dojo.getComputedStyle(dojo.byId("mapOuter")),
+          cw = parseInt(cs.width.replace(/px$/,"")),
+          ch = parseInt(cs.height.replace(/px$/,"")),
+          wRatio = cw/currentConfig.width,
+          hRatio = ch/currentConfig.height,
+          minRatio = Math.min(wRatio,hRatio),
+          shouldScale = minRatio < 1,
+          newScale = shouldScale?minRatio:1;
+
+      if (newScale !== currentScale) {
+        var cssValue = "scale(" + newScale + ")";
+
+        console.log(cw + " x " + ch);
+
+        var newCSS = {};
+        mergeCrossBrowserCSS(newCSS, "transform", cssValue);
+        // mergeCrossBrowserCSS(newCSS, "transition", "{prefix}transform 0.1s ease-in-out");
+        // mergeCrossBrowserCSS(newCSS, "transform-origin-x", "left");
+        mergeCrossBrowserCSS(newCSS, "transform-origin-y", "top");
+
+        dojo.style("map", newCSS);
+
+        console.log("Set transform to " + cssValue);
+      }
+    }
+
+		function setDevice() 
 		{
 			var mapDiv = dojo.style("map", {
 				width:currentConfig.width + "px",
 				height:currentConfig.height + "px"
 			});
-		
+
 			var templateConfig = codeSnippets[currentConfig.code];
 			dojo.destroy("codeTemplates");
 
@@ -149,6 +205,7 @@
 					{
 						currentConfig.selectedTemplate = this.selectedIndex;
 						updateTemplate();
+            scaleMapView();
 					});
 					
 					domConstruct.place(codeTemplates, 'output', 'first');
@@ -167,8 +224,27 @@
 				map.resize();
 			}
 		};
+
+    function processTemplateData(data) {
+      if (useLatLon) {
+        data.pt = esri.geometry.webMercatorToGeographic(data.pt);
+        data.e = esri.geometry.webMercatorToGeographic(data.e);
+      }
+      if (decimalPlaces > -1) {
+        data.scale = parseFloat(data.scale.toFixed(decimalPlaces));
+        
+        data.pt.x = parseFloat(data.pt.x.toFixed(decimalPlaces));
+        data.pt.y = parseFloat(data.pt.y.toFixed(decimalPlaces));
+
+        data.e.xmin = parseFloat(data.e.xmin.toFixed(decimalPlaces));
+        data.e.xmax = parseFloat(data.e.xmax.toFixed(decimalPlaces));
+        data.e.ymin = parseFloat(data.e.ymin.toFixed(decimalPlaces));
+        data.e.ymax = parseFloat(data.e.ymax.toFixed(decimalPlaces));
+      }
+      return data;
+    }
 	
-		var updateTemplate = function()
+		function updateTemplate()
 		{
 			var templateConfig = codeSnippets[currentConfig.code];
 			
@@ -184,17 +260,17 @@
 				templateConfig = templateConfig[currentConfig.selectedTemplate];
 			}
 			
-			var template = templateConfig.template;
-			var templateHighlighter = templateConfig.highlighter;
-			
-			template = template.replace(/\\{/g,"&curly_left;").replace(/\\}/g,"&curly_right;");
-			var ext = map.extent;
-			var str = dojo.replace(template, 
-								   {
-									scale: map.getScale() * (currentConfig.dpi / jsDpi), 
-									pt:map.extent.getCenter(),
-									e:map.extent
-								   });
+			var template = templateConfig.template.replace(/\\{/g,"&curly_left;").replace(/\\}/g,"&curly_right;"),
+          templateHighlighter = templateConfig.highlighter,
+          ext = map.extent,
+          templateData = processTemplateData({
+            scale: map.getScale() * (currentConfig.dpi / jsDpi), 
+            pt:ext.getCenter(),
+            e:ext
+          });
+
+      var str = dojo.replace(template, templateData);
+
 			str = str.replace(/\&curly_left\;/g,"{").replace(/\&curly_right\;/g,"}");
 
 			var outputNode = dojo.byId("outputText");
@@ -245,6 +321,11 @@
 				});
       });
 
+      dojo.connect(dojo.byId("srPickList"), "onchange", function(e) {
+        useLatLon = e.target.selectedOptions[0].value === "4326";
+        updateTemplate();
+      });
+
       dojo.connect(dojo.byId("manualDPI"), "onchange", function() {
 				currentConfig.dpi = this.value;
 				setDevice();
@@ -278,10 +359,21 @@
       //Add the topographic layer to the map. View the ArcGIS Online site for services http://arcgisonline/home/search.html?t=content&f=typekeywords:service    
       var basemap = new esri.layers.ArcGISTiledMapServiceLayer("http://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer");
       map.addLayer(basemap);
+
+      var geocoder = new esri.dijit.Geocoder({ 
+        map: map,
+        autoComplete: true,
+        placeholder: "Search…"
+      }, "search");
+      geocoder.startup();
         
       dojo.connect(map, "onExtentChange", function(extent, delta, levelChange, lod) {
       	updateTemplate();
       });
+
+      dojo.connect(map, "onResize", scaleMapView);
+
+      window.onresize = scaleMapView;
     }
 
     dojo.addOnLoad(init);    
@@ -301,9 +393,16 @@
 				</label> <label> Height:
 				<input id="manualHeight" type="text" dojotype="dijit.form.NumberTextBox" required="true" style="width: 5em" data-dojo-props="constraints:{min:10,places:0},invalidMessage:'DPI must be an integer >= 10'" />
 				</label> 
+        <label> SpatialReference:
+        <select id="srPickList" dojotype="dijit.form.Select">
+        <option value="102100">Web Mercator</option>
+        <option value="4326">WGS84 (Lat/Lon)</option>
+        </select>
+        </label>
 			</div>
 		</div>
 		<div id="mapOuter" dojotype="dijit.layout.ContentPane" region="center" style="border:1px solid #000;padding:0;">
+      <div id="search"></div>
 			<div id="map" style="border:1px solid #000;padding:0;margin-right:auto;margin-left:auto;">
 			</div>
 		</div>
