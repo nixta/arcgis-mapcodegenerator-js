@@ -6,8 +6,8 @@
 	<meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no" />
 	<title>ArcGIS Map Code Generator</title>
 
-	<link rel="stylesheet" href="http://js.arcgis.com/3.8/js/dojo/dijit/themes/claro/claro.css">
-	<link rel="stylesheet" href="http://js.arcgis.com/3.8/js/esri/css/esri.css">
+  <link rel="stylesheet" href="http://js.arcgis.com/3.11/esri/css/esri.css">
+	<link rel="stylesheet" href="http://js.arcgis.com/3.11/dijit/themes/claro/claro.css">
 
 	<link type="text/css" rel="stylesheet" href="sh/styles/shCoreDefault.css" />
 
@@ -65,279 +65,24 @@
 			</div>
 		</div>
 	</div>
+
+  <script type="text/javascript">
+    var dojoConfig = {parseOnLoad: true};
+  </script>
+
+  <script type="text/javascript" src="sh/scripts/shCore.js"></script>
+  <script type="text/javascript" src="sh/scripts/shBrushJScript.js"></script>
+  <script type="text/javascript" src="sh/scripts/shBrushObjC.js"></script>
+  <script type="text/javascript" src="sh/scripts/shBrushSwift.js"></script>
+
+  <script src="http://js.arcgis.com/3.11/"></script>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+
+  <script language="javascript">
+    dojo.require("dijit.layout.BorderContainer");
+    dojo.require("dijit.layout.ContentPane");
+  </script>
 </body>
-<script type="text/javascript" src="sh/scripts/shCore.js"></script>
-<script type="text/javascript" src="sh/scripts/shBrushJScript.js"></script>
-<script type="text/javascript" src="sh/scripts/shBrushObjC.js"></script>
-<script type="text/javascript" src="sh/scripts/shBrushSwift.js"></script>
-
-<script type="text/javascript">
-  var djConfig = {parseOnLoad: true};
-</script>
-<script src="http://js.arcgis.com/3.8/"></script>
-
-<script type="text/javascript">
-  dojo.require("dijit.layout.BorderContainer");
-  dojo.require("dijit.layout.ContentPane");
-  dojo.require("esri.map");
-  dojo.require("esri.dijit.Geocoder")
-  dojo.require("esri.geometry.webMercatorUtils");
-
-  var map;
-
-  var jsDpi = 96;
-  var deviceDpi = 163;
-  var devicePixelWidth = 320;
-  var devicePixelHeight = 460;
-
-  var useLatLon = false;
-  var decimalPlaces = 4;
-
-  var currentScale = 1;
-  
-  var initialConfig = 0;
-  
-
-  var currentConfig;
-</script>
-<script src="config.js"></script>
-<script type="text/javascript">
-  function mergeCrossBrowserCSS(originalCSS, name, value) {
-    var prefixes = ["webkit", "moz", "ms", "o", ""];
-    for (var i=0; i<prefixes.length; i++) {
-      var prefix = prefixes[i],
-          p = prefix!==""?"-"+prefix+"-":prefix;
-      originalCSS[p+name] = dojo.replace(value, {prefix:p});
-    }
-    return originalCSS;
-  }
-
-  function scaleMapView() {
-    var cs = dojo.getComputedStyle(dojo.byId("mapOuter")),
-        cw = parseInt(cs.width.replace(/px$/,"")),
-        ch = parseInt(cs.height.replace(/px$/,"")),
-        wRatio = cw/currentConfig.width,
-        hRatio = ch/currentConfig.height,
-        minRatio = Math.min(wRatio,hRatio),
-        shouldScale = minRatio < 1,
-        newScale = shouldScale?minRatio:1;
-
-    if (newScale !== currentScale) {
-      var cssValue = "scale(" + newScale + ")";
-
-      console.log(cw + " x " + ch);
-
-      var newCSS = {};
-      mergeCrossBrowserCSS(newCSS, "transform", cssValue);
-      // mergeCrossBrowserCSS(newCSS, "transition", "{prefix}transform 0.1s ease-in-out");
-      // mergeCrossBrowserCSS(newCSS, "transform-origin-x", "left");
-      mergeCrossBrowserCSS(newCSS, "transform-origin-y", "top");
-
-      dojo.style("map", newCSS);
-
-      console.log("Set transform to " + cssValue);
-    }
-  }
-
-  function setDevice() 
-  {
-    var mapDiv = dojo.style("map", {
-      width:currentConfig.width + "px",
-      height:currentConfig.height + "px"
-    });
-
-    var templateConfig = codeSnippets[currentConfig.code];
-    dojo.destroy("codeTemplates");
-
-    if( Object.prototype.toString.call( templateConfig ) === "[object Array]" ) 
-    {
-      // Build a pick list.
-      require(["dojo/dom-construct"], function(domConstruct) {
-        var arrayOfConfigs = templateConfig;
-        var codeTemplates = domConstruct.toDom("<select id='codeTemplates'></select>");
-        for (i=0;i<arrayOfConfigs.length;i++)
-        {
-          var c = arrayOfConfigs[i];
-          var optionNode = domConstruct.toDom(dojo.replace("<option name='codeTemplate-{code}-{id}'>{name}</option>",
-                            {code:currentConfig.code, id:i, name:c.name}));
-          domConstruct.place(optionNode, codeTemplates, "last");
-        }
-        
-        dojo.connect(codeTemplates, 'onchange', function()
-        {
-          currentConfig.selectedTemplate = this.selectedIndex;
-          updateTemplate();
-          scaleMapView();
-        });
-        
-        domConstruct.place(codeTemplates, 'output', 'first');
-      });
-    }
-  
-    dojo.byId("manualDPI").value = currentConfig.dpi;
-    dojo.byId("manualWidth").value = currentConfig.width;
-    dojo.byId("manualHeight").value = currentConfig.height;
-    
-    dojo.query("input", dojo.byId("manualEntry")).attr("readonly",!currentConfig.editable);
-
-    dijit.byId("topContainer").resize();
-    if (map)
-    {
-      map.resize();
-    }
-  };
-
-  function processTemplateData(data) {
-    if (useLatLon) {
-      data.pt = esri.geometry.webMercatorToGeographic(data.pt);
-      data.e = esri.geometry.webMercatorToGeographic(data.e);
-    }
-    if (decimalPlaces > -1) {
-      data.scale = parseFloat(data.scale.toFixed(decimalPlaces));
-      
-      data.pt.x = parseFloat(data.pt.x.toFixed(decimalPlaces));
-      data.pt.y = parseFloat(data.pt.y.toFixed(decimalPlaces));
-
-      data.e.xmin = parseFloat(data.e.xmin.toFixed(decimalPlaces));
-      data.e.xmax = parseFloat(data.e.xmax.toFixed(decimalPlaces));
-      data.e.ymin = parseFloat(data.e.ymin.toFixed(decimalPlaces));
-      data.e.ymax = parseFloat(data.e.ymax.toFixed(decimalPlaces));
-    }
-    return data;
-  }
-
-  function updateTemplate()
-  {
-    var templateConfig = codeSnippets[currentConfig.code];
-    
-    // If we're dealing with an array of configs, get the right one (defaulting to 1st).
-    if( Object.prototype.toString.call( templateConfig ) === "[object Array]" ) 
-    {
-      // Do we have a selected template?
-      if (!currentConfig.selectedTemplate)
-      {
-        currentConfig.selectedTemplate = 0;
-      }
-      
-      templateConfig = templateConfig[currentConfig.selectedTemplate];
-    }
-    
-    var template = templateConfig.template.replace(/\\{/g,"&curly_left;").replace(/\\}/g,"&curly_right;"),
-        templateHighlighter = templateConfig.highlighter,
-        ext = map.extent,
-        templateData = processTemplateData({
-          scale: map.getScale() * (currentConfig.dpi / jsDpi), 
-          pt:ext.getCenter(),
-          e:ext
-        });
-
-    var str = dojo.replace(template, templateData);
-
-    str = str.replace(/\&curly_left\;/g,"{").replace(/\&curly_right\;/g,"}");
-
-    var outputNode = dojo.byId("outputText");
-    var codeTemplate = templateHighlighter?"<pre id='highlightedCode' class='brush: {brush}'>{code}</pre>":"{code}";
-    var codeStr = dojo.replace(codeTemplate, {brush: templateHighlighter, code: str});
-    outputNode.innerHTML = codeStr;
-    var bc = dijit.byId("topContainer");
-    SyntaxHighlighter.highlight();
-    bc.resize();
-  }
-
-  function init() {
-    currentConfig = configs[initialConfig];
-    
-    require(["dojo/dom-construct"], function(domConstruct) {
-      var configPicker = dojo.byId("devicePickList");
-      var openGroup = null;
-      for (i=0; i < configs.length; i++)
-      {
-        var c = configs[i], prefix="";
-        if (c.newgroup || c.endgroup)
-        {
-          if (openGroup != null)
-          {
-            domConstruct.place(openGroup, configPicker, "last");
-            openGroup = null;
-          }
-        }
-        
-        if (c.newgroup)
-        {
-          openGroup = domConstruct.toDom("<optgroup label='" + c.newgroup + "'/>");
-        }
-        
-        var newNode = domConstruct.toDom(dojo.replace("<option name='{id}'{s}>{name}</option>", {id:i, name:c.name, s:c==currentConfig?" selected":""}));
-        domConstruct.place(newNode, openGroup!=null?openGroup:configPicker, "last");
-      }
-      
-      if (openGroup != null)
-      {
-        domConstruct.place(openGroup, configPicker, "last");
-      }
-    
-      dojo.connect(configPicker, "onchange", function() {
-        currentConfig = configs[this.selectedIndex];
-        setDevice();
-        updateTemplate();
-      });
-    });
-
-    dojo.connect(dojo.byId("srPickList"), "onchange", function(e) {
-      useLatLon = e.target.selectedOptions[0].value === "4326";
-      updateTemplate();
-    });
-
-    dojo.connect(dojo.byId("manualDPI"), "onchange", function() {
-      currentConfig.dpi = this.value;
-      setDevice();
-      updateTemplate();
-    });
-      
-    dojo.connect(dojo.byId("manualWidth"), "onchange", function() {
-      currentConfig.width = this.value;
-      setDevice();
-      updateTemplate();
-    });
-      
-    dojo.connect(dojo.byId("manualHeight"), "onchange", function() {
-      currentConfig.height = this.value;
-      setDevice();
-      updateTemplate();
-    });
-      
-    SyntaxHighlighter.all();
-
-    setDevice();
-
-    var initExtent = new esri.geometry.Extent({
-      "xmin":-13647945.965576269,"ymin":4502154.477249376,
-      "xmax":-13599026.267473739,"ymax":4572476.543271764,
-      "spatialReference":{"wkid":102100}
-    });
-
-    map = new esri.Map("map",{"extent":initExtent});
-
-    //Add the topographic layer to the map. View the ArcGIS Online site for services http://arcgisonline/home/search.html?t=content&f=typekeywords:service    
-    var basemap = new esri.layers.ArcGISTiledMapServiceLayer("http://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer");
-    map.addLayer(basemap);
-
-    var geocoder = new esri.dijit.Geocoder({ 
-      map: map,
-      autoComplete: true,
-      placeholder: "Search…"
-    }, "search");
-    geocoder.startup();
-      
-    dojo.connect(map, "onExtentChange", function(extent, delta, levelChange, lod) {
-      updateTemplate();
-    });
-
-    dojo.connect(map, "onResize", scaleMapView);
-
-    window.onresize = scaleMapView;
-  }
-
-  dojo.addOnLoad(init);    
-</script>
 </html>
